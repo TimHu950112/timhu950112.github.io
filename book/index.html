@@ -266,6 +266,11 @@
             <button class="mode-btn active" id="answerBtn" onclick="switchMode('answer')">✅ 答案</button>
         </div>
 
+        <div class="image-container">
+            <div id="loadingMsg" class="loading">載入中...</div>
+            <img id="bookImage" style="display: none;" alt="電子書頁面" onload="imageLoaded()" onerror="imageError()">
+        </div>
+
         <div class="download-section">
             <h3>批量下載</h3>
             <div class="download-controls">
@@ -278,20 +283,7 @@
                 </div>
 
                 <div class="download-actions">
-                    <button class="download-btn" id="downloadBtn" onclick="startDownload()">📥 批量下載</button>
-                    <button class="download-btn" id="zipDownloadBtn" onclick="downloadAsZip()" style="background-color: #ffc107; color: #212529;">📦 下載ZIP</button>
-                    <button class="download-btn" id="generateLinksBtn" onclick="generateDownloadLinks()" style="background-color: #17a2b8;">🔗 生成下載連結</button>
-                    <button class="download-btn cancel" id="cancelBtn" onclick="cancelDownload()" style="display: none;">❌ 取消下載</button>
-                </div>
-            </div>
-
-            <div class="progress-container" id="progressContainer" style="display: none;">
-                <div class="progress-info">
-                    <span id="progressText">準備下載...</span>
-                    <span id="progressPercent">0%</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
+                    <button class="download-btn" id="generateLinksBtn" onclick="generateDownloadLinks()" style="background-color: #28a745;">🔗 生成下載連結</button>
                 </div>
             </div>
 
@@ -299,11 +291,6 @@
                 <h4>下載連結 (右鍵另存新檔)</h4>
                 <div id="linksList"></div>
             </div>
-        </div>
-
-        <div class="image-container">
-            <div id="loadingMsg" class="loading">載入中...</div>
-            <img id="bookImage" style="display: none;" alt="電子書頁面" onload="imageLoaded()" onerror="imageError()">
         </div>
 
         <div class="url-display">
@@ -421,10 +408,6 @@
             }
         });
 
-        // 下載相關變數
-        let downloadCancelled = false;
-        let downloadInProgress = false;
-
         // 驗證頁面範圍
         function validatePageRange() {
             const startPage = parseInt(document.getElementById('startPage').value);
@@ -453,109 +436,6 @@
             return pages;
         }
 
-        // 下載單張圖片 (改用直接連結方式)
-        async function downloadImage(pageStr) {
-            return new Promise((resolve, reject) => {
-                const url = questionBaseUrl + pageStr + ".png";
-
-                // 創建隱藏的 iframe 來觸發下載
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = url;
-                document.body.appendChild(iframe);
-
-                // 也創建直接下載連結作為備用
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `page_${pageStr}.png`;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // 清理 iframe
-                setTimeout(() => {
-                    if (iframe.parentNode) {
-                        document.body.removeChild(iframe);
-                    }
-                    resolve();
-                }, 1000);
-            });
-        }
-
-        // 開始批量下載
-        async function startDownload() {
-            if (downloadInProgress) return;
-
-            const startPage = parseInt(document.getElementById('startPage').value);
-            const endPage = parseInt(document.getElementById('endPage').value);
-
-            if (startPage > endPage) {
-                alert('起始頁不能大於結束頁！');
-                return;
-            }
-
-            downloadInProgress = true;
-            downloadCancelled = false;
-
-            // 顯示進度條
-            document.getElementById('progressContainer').style.display = 'block';
-            document.getElementById('downloadBtn').style.display = 'none';
-            document.getElementById('cancelBtn').style.display = 'inline-block';
-
-            const pageList = generatePageList(startPage, endPage);
-            const totalPages = pageList.length;
-
-            document.getElementById('progressText').textContent = `準備下載 ${totalPages} 頁...`;
-            document.getElementById('progressPercent').textContent = '0%';
-            document.getElementById('progressFill').style.width = '0%';
-
-            let completed = 0;
-
-            for (let i = 0; i < pageList.length; i++) {
-                if (downloadCancelled) break;
-
-                const pageStr = pageList[i];
-                document.getElementById('progressText').textContent = `下載中: ${pageStr} (${i + 1}/${totalPages})`;
-
-                try {
-                    await downloadImage(pageStr);
-                    completed++;
-
-                    const progress = (completed / totalPages) * 100;
-                    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
-                    document.getElementById('progressFill').style.width = `${progress}%`;
-
-                    // 添加小延遲避免瀏覽器阻塞
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                } catch (error) {
-                    console.error(`下載失敗: ${pageStr}`, error);
-                }
-            }
-
-            // 完成下載
-            if (!downloadCancelled) {
-                document.getElementById('progressText').textContent = `下載完成！共 ${completed} 頁`;
-                document.getElementById('progressPercent').textContent = '100%';
-                document.getElementById('progressFill').style.width = '100%';
-            } else {
-                document.getElementById('progressText').textContent = `下載已取消 (已下載 ${completed} 頁)`;
-            }
-
-            // 重置按鈕狀態
-            setTimeout(() => {
-                document.getElementById('progressContainer').style.display = 'none';
-                document.getElementById('downloadBtn').style.display = 'inline-block';
-                document.getElementById('cancelBtn').style.display = 'none';
-                downloadInProgress = false;
-            }, 3000);
-        }
-
-        // 取消下載
-        function cancelDownload() {
-            downloadCancelled = true;
-        }
-
         // 生成下載連結列表
         function generateDownloadLinks() {
             const startPage = parseInt(document.getElementById('startPage').value);
@@ -582,134 +462,6 @@
             });
 
             document.getElementById('downloadLinks').style.display = 'block';
-        }
-
-        // ZIP 下載功能
-        async function downloadAsZip() {
-            if (downloadInProgress) return;
-
-            const startPage = parseInt(document.getElementById('startPage').value);
-            const endPage = parseInt(document.getElementById('endPage').value);
-
-            if (startPage > endPage) {
-                alert('起始頁不能大於結束頁！');
-                return;
-            }
-
-            downloadInProgress = true;
-            downloadCancelled = false;
-
-            // 顯示進度條
-            document.getElementById('progressContainer').style.display = 'block';
-            document.getElementById('zipDownloadBtn').style.display = 'none';
-            document.getElementById('cancelBtn').style.display = 'inline-block';
-
-            const pageList = generatePageList(startPage, endPage);
-            const totalPages = pageList.length;
-            const zip = new JSZip();
-
-            document.getElementById('progressText').textContent = `準備打包 ${totalPages} 頁...`;
-            document.getElementById('progressPercent').textContent = '0%';
-            document.getElementById('progressFill').style.width = '0%';
-
-            let completed = 0;
-
-            try {
-                for (let i = 0; i < pageList.length; i++) {
-                    if (downloadCancelled) break;
-
-                    const pageStr = pageList[i];
-                    document.getElementById('progressText').textContent = `處理中: ${pageStr} (${i + 1}/${totalPages})`;
-
-                    try {
-                        const imageBlob = await fetchImageAsBlob(pageStr);
-                        if (imageBlob) {
-                            zip.file(`page_${pageStr}.png`, imageBlob);
-                            completed++;
-
-                            const progress = (completed / totalPages) * 100;
-                            document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
-                            document.getElementById('progressFill').style.width = `${progress}%`;
-                        }
-                    } catch (error) {
-                        console.error(`處理失敗: ${pageStr}`, error);
-                    }
-
-                    // 添加小延遲避免瀏覽器阻塞
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
-
-                if (!downloadCancelled && completed > 0) {
-                    document.getElementById('progressText').textContent = '正在生成ZIP檔案...';
-
-                    const zipBlob = await zip.generateAsync({
-                        type: "blob",
-                        compression: "DEFLATE",
-                        compressionOptions: { level: 6 }
-                    });
-
-                    // 下載ZIP檔案
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(zipBlob);
-                    link.download = `pages_${startPage}-${endPage}.zip`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(link.href);
-
-                    document.getElementById('progressText').textContent = `ZIP下載完成！共打包 ${completed} 頁`;
-                    document.getElementById('progressPercent').textContent = '100%';
-                    document.getElementById('progressFill').style.width = '100%';
-                } else if (downloadCancelled) {
-                    document.getElementById('progressText').textContent = `下載已取消 (已處理 ${completed} 頁)`;
-                } else {
-                    document.getElementById('progressText').textContent = '沒有成功下載任何頁面';
-                }
-
-            } catch (error) {
-                console.error('ZIP生成失敗:', error);
-                document.getElementById('progressText').textContent = 'ZIP生成失敗，請稍後重試';
-            }
-
-            // 重置按鈕狀態
-            setTimeout(() => {
-                document.getElementById('progressContainer').style.display = 'none';
-                document.getElementById('zipDownloadBtn').style.display = 'inline-block';
-                document.getElementById('cancelBtn').style.display = 'none';
-                downloadInProgress = false;
-            }, 3000);
-        }
-
-        // 獲取圖片為Blob
-        async function fetchImageAsBlob(pageStr) {
-            return new Promise((resolve, reject) => {
-                const url = questionBaseUrl + pageStr + ".png";
-
-                fetch(url, { mode: 'cors' })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.blob();
-                    })
-                    .then(blob => resolve(blob))
-                    .catch(error => {
-                        console.warn(`無法獲取頁面: ${pageStr}`, error);
-                        // 嘗試使用 Image + Canvas 方式
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.onload = function() {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-                            canvas.toBlob(resolve, 'image/png');
-                        };
-                        img.onerror = () => resolve(null);
-                        img.src = url;
-                    });
-            });
         }
 
         // 初始化
