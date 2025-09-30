@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電子書頁面瀏覽器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #bookImage {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .nav-btn {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .nav-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .nav-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .url-display {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        .download-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+
+        .download-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .download-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .range-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .range-inputs label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .range-inputs input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 80px;
+        }
+
+        .download-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .download-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            background-color: #28a745;
+            color: white;
+        }
+
+        .download-btn:hover {
+            background-color: #218838;
+        }
+
+        .download-btn.cancel {
+            background-color: #dc3545;
+        }
+
+        .download-btn.cancel:hover {
+            background-color: #c82333;
+        }
+
+        .download-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .download-links {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .download-links h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+
+        .download-link {
+            display: block;
+            margin: 8px 0;
+            padding: 8px 12px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #007bff;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .download-link:hover {
+            background-color: #f8f9fa;
+            text-decoration: underline;
+        }
+
+        .mode-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 2px solid #007bff;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: white;
+            color: #007bff;
+        }
+
+        .mode-btn:hover {
+            background-color: #f8f9fa;
+        }
+
+        .mode-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>電子書頁面瀏覽器</h1>
+
+        <div class="controls">
+            <button class="nav-btn" id="prevBtn" onclick="changePage(-1)">◀ 上一頁</button>
+            <div class="page-info">
+                頁數: <span id="currentPage">4-5</span>
+            </div>
+            <button class="nav-btn" id="nextBtn" onclick="changePage(1)">下一頁 ▶</button>
+        </div>
+
+        <div class="mode-controls">
+            <button class="mode-btn" id="questionBtn" onclick="switchMode('question')">📖 題目</button>
+            <button class="mode-btn active" id="answerBtn" onclick="switchMode('answer')">✅ 答案</button>
+        </div>
+
+        <div class="download-section">
+            <h3>批量下載</h3>
+            <div class="download-controls">
+                <div class="range-inputs">
+                    <label for="startPage">起始頁:</label>
+                    <input type="number" id="startPage" min="2" step="2" value="2" onchange="validatePageRange()">
+
+                    <label for="endPage">結束頁:</label>
+                    <input type="number" id="endPage" min="2" step="2" value="10" onchange="validatePageRange()">
+                </div>
+
+                <div class="download-actions">
+                    <button class="download-btn" id="downloadBtn" onclick="startDownload()">📥 批量下載</button>
+                    <button class="download-btn" id="zipDownloadBtn" onclick="downloadAsZip()" style="background-color: #ffc107; color: #212529;">📦 下載ZIP</button>
+                    <button class="download-btn" id="generateLinksBtn" onclick="generateDownloadLinks()" style="background-color: #17a2b8;">🔗 生成下載連結</button>
+                    <button class="download-btn cancel" id="cancelBtn" onclick="cancelDownload()" style="display: none;">❌ 取消下載</button>
+                </div>
+            </div>
+
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-info">
+                    <span id="progressText">準備下載...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="download-links" id="downloadLinks" style="display: none;">
+                <h4>下載連結 (右鍵另存新檔)</h4>
+                <div id="linksList"></div>
+            </div>
+        </div>
+
+        <div class="image-container">
+            <div id="loadingMsg" class="loading">載入中...</div>
+            <img id="bookImage" style="display: none;" alt="電子書頁面" onload="imageLoaded()" onerror="imageError()">
+        </div>
+
+        <div class="url-display">
+            <strong>當前 URL:</strong><br>
+            <span id="currentUrl"></span>
+        </div>
+    </div>
+
+    <script>
+        // 基礎 URL 模板
+        const questionBaseUrl = "https://digitalmaster.knsh.com.tw/ebooks/%E5%9C%8B%E4%B8%AD%E8%BC%94%E6%9D%90/Books/114%E4%B8%8A/02_%E8%8B%B1%E8%AA%9E/03_%E5%96%AE%E5%86%8A3%E5%B9%B4%E7%B4%9A/01_%E7%B6%B2%E9%A0%81%E9%9B%BB%E5%AD%90%E6%9B%B8/UK11491MKSEN/Resource/SystemResource/knsh_book/EditRes/Resource/studetnt%20ok/";
+        const answerBaseUrl = "https://digitalmaster.knsh.com.tw/ebooks/%E5%9C%8B%E4%B8%AD%E8%BC%94%E6%9D%90/Books/114%E4%B8%8A/02_%E8%8B%B1%E8%AA%9E/03_%E5%96%AE%E5%86%8A3%E5%B9%B4%E7%B4%9A/01_%E7%B6%B2%E9%A0%81%E9%9B%BB%E5%AD%90%E6%9B%B8/UK11491MKSEN/Resource/SystemResource/knsh_book/EditRes/Resource/teacher%20ok/";
+
+        // 當前頁面信息
+        let currentPageNum = 4;
+        let currentSubPage = 5;
+        let currentAnswerPage = 54; // 答案頁碼（單一頁面）
+        let currentMode = 'question'; // 'question' 或 'answer'
+
+        // 頁面範圍設定
+        const minPage = 2; // 最小從 2-3 開始
+        const maxPage = 100; // 可根據實際情況調整
+
+        function updatePageDisplay() {
+            if (currentMode === 'question') {
+                const pageStr = `${currentPageNum}-${currentSubPage}`;
+                document.getElementById('currentPage').textContent = pageStr;
+                // 更新按鈕狀態
+                document.getElementById('prevBtn').disabled = (currentPageNum <= minPage);
+                document.getElementById('nextBtn').disabled = (currentPageNum >= maxPage);
+            } else {
+                document.getElementById('currentPage').textContent = `答案 ${currentAnswerPage}`;
+                // 答案模式的按鈕狀態
+                document.getElementById('prevBtn').disabled = (currentAnswerPage <= 1);
+                document.getElementById('nextBtn').disabled = (currentAnswerPage >= 200); // 假設最大答案頁數
+            }
+        }
+
+        function loadImage() {
+            let fullUrl;
+
+            if (currentMode === 'question') {
+                const pageStr = `${currentPageNum}-${currentSubPage}`;
+                fullUrl = questionBaseUrl + pageStr + ".png";
+            } else {
+                fullUrl = answerBaseUrl + currentAnswerPage + ".png";
+            }
+
+            document.getElementById('currentUrl').textContent = fullUrl;
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('bookImage').style.display = 'none';
+
+            const img = document.getElementById('bookImage');
+            img.src = fullUrl;
+        }
+
+        function imageLoaded() {
+            document.getElementById('loadingMsg').style.display = 'none';
+            document.getElementById('bookImage').style.display = 'block';
+        }
+
+        function imageError() {
+            document.getElementById('loadingMsg').textContent = '圖片載入失敗';
+            document.getElementById('bookImage').style.display = 'none';
+        }
+
+        function changePage(direction) {
+            if (currentMode === 'question') {
+                if (direction > 0) {
+                    // 下一頁：4-5 → 6-7 → 8-9 → 10-11
+                    currentPageNum += 2;
+                    currentSubPage += 2;
+                } else {
+                    // 上一頁：8-9 → 6-7 → 4-5 → 2-3
+                    if (currentPageNum > minPage) {
+                        currentPageNum -= 2;
+                        currentSubPage -= 2;
+                    }
+                }
+            } else {
+                // 答案模式：單頁導航
+                if (direction > 0) {
+                    if (currentAnswerPage < 200) {
+                        currentAnswerPage++;
+                    }
+                } else {
+                    if (currentAnswerPage > 1) {
+                        currentAnswerPage--;
+                    }
+                }
+            }
+
+            updatePageDisplay();
+            loadImage();
+        }
+
+        // 切換模式
+        function switchMode(mode) {
+            currentMode = mode;
+
+            // 更新按鈕樣式
+            document.getElementById('questionBtn').classList.toggle('active', mode === 'question');
+            document.getElementById('answerBtn').classList.toggle('active', mode === 'answer');
+
+            updatePageDisplay();
+            loadImage();
+        }
+
+        // 鍵盤快捷鍵
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft') {
+                changePage(-1);
+            } else if (event.key === 'ArrowRight') {
+                changePage(1);
+            }
+        });
+
+        // 下載相關變數
+        let downloadCancelled = false;
+        let downloadInProgress = false;
+
+        // 驗證頁面範圍
+        function validatePageRange() {
+            const startPage = parseInt(document.getElementById('startPage').value);
+            const endPage = parseInt(document.getElementById('endPage').value);
+
+            // 確保是偶數
+            if (startPage % 2 !== 0) {
+                document.getElementById('startPage').value = startPage + 1;
+            }
+            if (endPage % 2 !== 0) {
+                document.getElementById('endPage').value = endPage + 1;
+            }
+
+            // 確保起始頁 <= 結束頁
+            if (startPage > endPage) {
+                document.getElementById('endPage').value = startPage;
+            }
+        }
+
+        // 生成頁面列表 (2-3, 4-5, 6-7, ...)
+        function generatePageList(start, end) {
+            const pages = [];
+            for (let i = start; i <= end; i += 2) {
+                pages.push(`${i}-${i + 1}`);
+            }
+            return pages;
+        }
+
+        // 下載單張圖片 (改用直接連結方式)
+        async function downloadImage(pageStr) {
+            return new Promise((resolve, reject) => {
+                const url = questionBaseUrl + pageStr + ".png";
+
+                // 創建隱藏的 iframe 來觸發下載
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+
+                // 也創建直接下載連結作為備用
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `page_${pageStr}.png`;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // 清理 iframe
+                setTimeout(() => {
+                    if (iframe.parentNode) {
+                        document.body.removeChild(iframe);
+                    }
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // 開始批量下載
+        async function startDownload() {
+            if (downloadInProgress) return;
+
+            const startPage = parseInt(document.getElementById('startPage').value);
+            const endPage = parseInt(document.getElementById('endPage').value);
+
+            if (startPage > endPage) {
+                alert('起始頁不能大於結束頁！');
+                return;
+            }
+
+            downloadInProgress = true;
+            downloadCancelled = false;
+
+            // 顯示進度條
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+
+            const pageList = generatePageList(startPage, endPage);
+            const totalPages = pageList.length;
+
+            document.getElementById('progressText').textContent = `準備下載 ${totalPages} 頁...`;
+            document.getElementById('progressPercent').textContent = '0%';
+            document.getElementById('progressFill').style.width = '0%';
+
+            let completed = 0;
+
+            for (let i = 0; i < pageList.length; i++) {
+                if (downloadCancelled) break;
+
+                const pageStr = pageList[i];
+                document.getElementById('progressText').textContent = `下載中: ${pageStr} (${i + 1}/${totalPages})`;
+
+                try {
+                    await downloadImage(pageStr);
+                    completed++;
+
+                    const progress = (completed / totalPages) * 100;
+                    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
+                    document.getElementById('progressFill').style.width = `${progress}%`;
+
+                    // 添加小延遲避免瀏覽器阻塞
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`下載失敗: ${pageStr}`, error);
+                }
+            }
+
+            // 完成下載
+            if (!downloadCancelled) {
+                document.getElementById('progressText').textContent = `下載完成！共 ${completed} 頁`;
+                document.getElementById('progressPercent').textContent = '100%';
+                document.getElementById('progressFill').style.width = '100%';
+            } else {
+                document.getElementById('progressText').textContent = `下載已取消 (已下載 ${completed} 頁)`;
+            }
+
+            // 重置按鈕狀態
+            setTimeout(() => {
+                document.getElementById('progressContainer').style.display = 'none';
+                document.getElementById('downloadBtn').style.display = 'inline-block';
+                document.getElementById('cancelBtn').style.display = 'none';
+                downloadInProgress = false;
+            }, 3000);
+        }
+
+        // 取消下載
+        function cancelDownload() {
+            downloadCancelled = true;
+        }
+
+        // 生成下載連結列表
+        function generateDownloadLinks() {
+            const startPage = parseInt(document.getElementById('startPage').value);
+            const endPage = parseInt(document.getElementById('endPage').value);
+
+            if (startPage > endPage) {
+                alert('起始頁不能大於結束頁！');
+                return;
+            }
+
+            const pageList = generatePageList(startPage, endPage);
+            const linksList = document.getElementById('linksList');
+            linksList.innerHTML = '';
+
+            pageList.forEach(pageStr => {
+                const url = questionBaseUrl + pageStr + ".png";
+                const link = document.createElement('a');
+                link.href = url;
+                link.className = 'download-link';
+                link.target = '_blank';
+                link.download = `page_${pageStr}.png`;
+                link.textContent = `下載頁面 ${pageStr}`;
+                linksList.appendChild(link);
+            });
+
+            document.getElementById('downloadLinks').style.display = 'block';
+        }
+
+        // ZIP 下載功能
+        async function downloadAsZip() {
+            if (downloadInProgress) return;
+
+            const startPage = parseInt(document.getElementById('startPage').value);
+            const endPage = parseInt(document.getElementById('endPage').value);
+
+            if (startPage > endPage) {
+                alert('起始頁不能大於結束頁！');
+                return;
+            }
+
+            downloadInProgress = true;
+            downloadCancelled = false;
+
+            // 顯示進度條
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('zipDownloadBtn').style.display = 'none';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+
+            const pageList = generatePageList(startPage, endPage);
+            const totalPages = pageList.length;
+            const zip = new JSZip();
+
+            document.getElementById('progressText').textContent = `準備打包 ${totalPages} 頁...`;
+            document.getElementById('progressPercent').textContent = '0%';
+            document.getElementById('progressFill').style.width = '0%';
+
+            let completed = 0;
+
+            try {
+                for (let i = 0; i < pageList.length; i++) {
+                    if (downloadCancelled) break;
+
+                    const pageStr = pageList[i];
+                    document.getElementById('progressText').textContent = `處理中: ${pageStr} (${i + 1}/${totalPages})`;
+
+                    try {
+                        const imageBlob = await fetchImageAsBlob(pageStr);
+                        if (imageBlob) {
+                            zip.file(`page_${pageStr}.png`, imageBlob);
+                            completed++;
+
+                            const progress = (completed / totalPages) * 100;
+                            document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
+                            document.getElementById('progressFill').style.width = `${progress}%`;
+                        }
+                    } catch (error) {
+                        console.error(`處理失敗: ${pageStr}`, error);
+                    }
+
+                    // 添加小延遲避免瀏覽器阻塞
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                if (!downloadCancelled && completed > 0) {
+                    document.getElementById('progressText').textContent = '正在生成ZIP檔案...';
+
+                    const zipBlob = await zip.generateAsync({
+                        type: "blob",
+                        compression: "DEFLATE",
+                        compressionOptions: { level: 6 }
+                    });
+
+                    // 下載ZIP檔案
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(zipBlob);
+                    link.download = `pages_${startPage}-${endPage}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+
+                    document.getElementById('progressText').textContent = `ZIP下載完成！共打包 ${completed} 頁`;
+                    document.getElementById('progressPercent').textContent = '100%';
+                    document.getElementById('progressFill').style.width = '100%';
+                } else if (downloadCancelled) {
+                    document.getElementById('progressText').textContent = `下載已取消 (已處理 ${completed} 頁)`;
+                } else {
+                    document.getElementById('progressText').textContent = '沒有成功下載任何頁面';
+                }
+
+            } catch (error) {
+                console.error('ZIP生成失敗:', error);
+                document.getElementById('progressText').textContent = 'ZIP生成失敗，請稍後重試';
+            }
+
+            // 重置按鈕狀態
+            setTimeout(() => {
+                document.getElementById('progressContainer').style.display = 'none';
+                document.getElementById('zipDownloadBtn').style.display = 'inline-block';
+                document.getElementById('cancelBtn').style.display = 'none';
+                downloadInProgress = false;
+            }, 3000);
+        }
+
+        // 獲取圖片為Blob
+        async function fetchImageAsBlob(pageStr) {
+            return new Promise((resolve, reject) => {
+                const url = questionBaseUrl + pageStr + ".png";
+
+                fetch(url, { mode: 'cors' })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => resolve(blob))
+                    .catch(error => {
+                        console.warn(`無法獲取頁面: ${pageStr}`, error);
+                        // 嘗試使用 Image + Canvas 方式
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob(resolve, 'image/png');
+                        };
+                        img.onerror = () => resolve(null);
+                        img.src = url;
+                    });
+            });
+        }
+
+        // 初始化
+        updatePageDisplay();
+        loadImage();
+    </script>
+</body>
+</html>
